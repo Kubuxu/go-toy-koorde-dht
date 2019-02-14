@@ -2,7 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-Ns=( 128 256 512 1024 2048 4096 8192 16384 )
+Ns=( 128 256 512 1024 2048 4096 8192 16384 32768)
 
 printf "Nodes, Runs, Forwards, Corrections\n"
 for n in ${Ns[@]}; do

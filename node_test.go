@@ -30,7 +30,7 @@ func TestBetweenEI(t *testing.T) {
 }
 
 func TestResolve(t *testing.T) {
-	for N := 128; N <= 1<<14; N = N << 1 {
+	for N := 128; N <= 1<<15; N = N << 1 {
 		t.Run(fmt.Sprintf("nodes-%d", N), func(t *testing.T) {
 			testResolveN(N, t)
 		})

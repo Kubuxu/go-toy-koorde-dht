@@ -1,6 +1,7 @@
 package koorde
 
 import (
+	"fmt"
 	"io"
 	"math/rand"
 	"sort"
@@ -29,7 +30,14 @@ func TestBetweenEI(t *testing.T) {
 }
 
 func TestResolve(t *testing.T) {
-	N := 64000
+	for N := 128; N <= 1<<14; N = N << 1 {
+		t.Run(fmt.Sprintf("nodes-%d", N), func(t *testing.T) {
+			testResolveN(N, t)
+		})
+	}
+}
+
+func testResolveN(N int, t *testing.T) {
 	seed := time.Now().UnixNano()
 	t.Logf("Seed: %d", seed)
 	rnd := rand.New(rand.NewSource(seed))
@@ -71,16 +79,16 @@ func TestResolve(t *testing.T) {
 		assert.NotNil(t, nodes[i].d, "d nil at %d", i)
 	}
 
-	runs := 1000
+	runs := 10000
 	for i := 0; i < runs; i++ {
 		_, err := io.ReadFull(rnd, tmpBuf)
 		assert.NoError(t, err, "in random")
 		tmp = tmp.SetBytes(tmpBuf)
 		//tmp.Or(tmp, neg).Rsh(tmp, 16)
 
-		n, err := nodes[rnd.Intn(N)].Lookup(tmp)
+		_, err = nodes[rnd.Intn(N)].Lookup(tmp)
 		assert.NoError(t, err, "lookup doesn't error")
-		t.Logf("Key [%x] found at [%x]", tmp, n.id)
+		//t.Logf("Key [%x] found at [%x]", tmp, n.id)
 	}
 
 }
@@ -131,9 +139,9 @@ func BenchmarkLookup(b *testing.B) {
 		assert.NoError(b, err, "in random")
 		tmp = tmp.SetBytes(tmpBuf)
 
-		n, err := nodes[rnd.Intn(N)].Lookup(tmp)
+		_, err = nodes[rnd.Intn(N)].Lookup(tmp)
 		assert.NoError(b, err, "lookup doesn't error")
-		b.Logf("Key [%x] found at [%x]", tmp, n.id)
+		//b.Logf("Key [%x] found at [%x]", tmp, n.id)
 
 	}
 }

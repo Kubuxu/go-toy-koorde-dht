@@ -12,14 +12,17 @@ var (
 )
 
 type node struct {
+	cfg  kordeConfig
 	id   *uint256.Int
-	succ *node
+	succ []*node
 	d    *node
 }
 
-func NewNode(id *uint256.Int) *node {
+func NewNode(config kordeConfig, id *uint256.Int) *node {
 	n := new(node)
+	n.cfg = config
 	n.id = id.Clone()
+	n.succ = make([]*node, n.cfg.backupSuccessors)
 	return n
 }
 
@@ -52,7 +55,7 @@ func (m node) bestStart(k *uint256.Int) (*uint256.Int, *uint256.Int) {
 		//log.Printf("r %064x\n", i.ToBig())
 
 		// check if it still on path
-		if betweenEI(i, m.id, m.succ.id) {
+		if betweenEI(i, m.id, m.succ[0].id) {
 			log.Printf("Match at %d", j)
 			// return is kshift where parts in i are shifted out
 			// and crafted i within our range
@@ -67,10 +70,10 @@ func (m node) bestStart(k *uint256.Int) (*uint256.Int, *uint256.Int) {
 // Clean inteface function
 func (m node) Lookup(k *uint256.Int) (*node, error) {
 	log.Printf("[%064x] Looking up: %064x\n", m.id.ToBig(), k.ToBig())
-	if betweenEI(k, m.id, m.succ.id) {
+	if betweenEI(k, m.id, m.succ[0].id) {
 		//log.Printf("[%x] Found %x\n", m.id, k)
 		log.Printf("Found")
-		return m.succ, nil
+		return m.succ[0], nil
 	}
 	kshift, i := m.bestStart(k.Clone())
 	return m.lookup(k, kshift, i)
@@ -83,14 +86,14 @@ func (m node) lookup(k, kshift, i *uint256.Int) (*node, error) {
 	// check if our successor is responsible for k
 	//log.Printf("Got: %064x @ %064x", i.ToBig(), m.id.ToBig())
 	//log.Printf("Ksh: %064x", kshift.ToBig())
-	if betweenEI(k, m.id, m.succ.id) {
+	if betweenEI(k, m.id, m.succ[0].id) {
 		//log.Printf("[%x] Found %x\n", m.id, k)
 		log.Printf("Found")
-		return m.succ, nil
+		return m.succ[0], nil
 	}
 
 	// check if we are responsibe for path i -> k
-	if betweenEI(i, m.id, m.succ.id) {
+	if betweenEI(i, m.id, m.succ[0].id) {
 		//log.Printf("[%x] Forwarding %x\n", m.id, k)
 		log.Printf("Forwarding")
 
@@ -101,14 +104,19 @@ func (m node) lookup(k, kshift, i *uint256.Int) (*node, error) {
 
 		return m.d.lookup(k, kshift, i)
 	} else {
-		//log.Printf("[%x] Correcting %x\n", m.id, k)
-		tmp := uint256.NewInt()
-		tmp.Sub(i, m.succ.id)
-		log.Printf("Correcting")
-		//log.Printf("Correcting delta %064x\n", tmp.ToBig())
 		// correct if we are not responsibe for the path
-		return m.succ.lookup(k, kshift, i)
+		//log.Printf("[%x] Correcting %x\n", m.id, k)
+		//log.Printf("Correcting delta %064x\n", tmp.ToBig())
+		//tmp := uint256.NewInt()
+		//tmp.Sub(i, m.succ[0].id)
+		log.Printf("Correcting")
+		for j := m.cfg.backupSuccessors - 1; j >= 0; j-- {
+			if betweenEI(i, m.succ[j].id, m.id) {
+				return m.succ[j].lookup(k, kshift, i)
+			}
+		}
 	}
+	panic("we shouldn't end up here")
 }
 
 // checks if x is in interval (min, max] mod 2^256

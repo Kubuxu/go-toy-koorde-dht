@@ -94,7 +94,7 @@ func (m node) lookup(k, kshift, i *uint256.Int) (*node, error) {
 	for i := 0; i < m.cfg.backupSuccessors-1; i++ {
 		if betweenEI(k, m.succ[i].id, m.succ[i+1].id) {
 			//log.Printf("[%x] Found %x\n", m.id, k)
-			log.Printf("Found")
+			log.Printf("Found (%d)", i)
 			return m.succ[i+1], nil
 		}
 	}
@@ -116,8 +116,8 @@ func (m node) lookup(k, kshift, i *uint256.Int) (*node, error) {
 			}
 		}
 		// forward to furthers forwarder for correcting
-		log.Printf("Forwarding (default)")
-		return m.d[int(m.cfg.degreeShift-1)].lookup(k, kshift, i)
+		log.Printf("Forwarding far (%d)", m.cfg.degree-1)
+		return m.d[int(m.cfg.degree-1)].lookup(k, kshift, i)
 	} else {
 		// correct if we are not responsibe for the path
 

@@ -97,7 +97,7 @@ func setupTest(t testing.TB, cfg koordeConfig, N int, setSeed int64) (*assert.As
 var long = flag.Bool("long", false, "run long tests")
 
 func TestResolve(t *testing.T) {
-	Nmax := 1 << 12
+	Nmax := 1 << 10
 	if *long {
 		Nmax = 1 << 15
 	}
@@ -110,15 +110,15 @@ func TestResolve(t *testing.T) {
 }
 
 func testResolveN(N int, t *testing.T) {
-	cfg, err := Config(8, 16)
+	cfg, err := Config(16, 16)
 	assert.NoError(t, err, "Config returned error")
-	//assert, rnd, nodes := setupTest(t, cfg, N, -1)
-	assert, rnd, nodes := setupTest(t, cfg, N, 1550215297)
+	assert, rnd, nodes := setupTest(t, cfg, N, -1)
+	//assert, rnd, nodes := setupTest(t, cfg, N, 1550215297)
 
 	tmp := uint256.NewInt()
 	tmpBuf := make([]byte, 256/8)
 
-	runs := 100000
+	runs := 1000
 	for i := 0; i < runs; i++ {
 		_, err := io.ReadFull(rnd, tmpBuf)
 		assert.NoError(err, "in random")

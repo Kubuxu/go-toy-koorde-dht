@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
+	logger "log"
 	"math/rand"
 	"sort"
 	"testing"
@@ -31,16 +33,23 @@ func TestBetweenEI(t *testing.T) {
 	assert.True(betweenEI(ten, big, ten), "a lot < 1 <= 10")
 }
 
-func setupNetwork(t testing.TB, rnd *rand.Rand, cfg koordeConfig, N int) []*node {
+type kRnd struct {
+	rand.Rand
+}
+
+func (rnd *kRnd) Uint256(u *uint256.Int) {
+	buf := make([]byte, KEY_SPACE/8)
+	rnd.Read(buf)
+	u.SetBytes(buf)
+}
+
+func setupNetwork(t testing.TB, rnd *kRnd, cfg koordeConfig, N int) []*node {
 	assert := assert.New(t)
 
 	nodes := make([]*node, 0, N)
 	tmp := uint256.NewInt()
-	tmpBuf := make([]byte, 256/8)
 	for i := 0; i < N; i++ {
-		_, err := io.ReadFull(rnd, tmpBuf)
-		assert.NoError(err, "in random")
-		tmp = tmp.SetBytes(tmpBuf)
+		rnd.Uint256(tmp)
 		nodes = append(nodes, NewNode(cfg, tmp))
 	}
 	sort.Slice(nodes, func(a, b int) bool {
@@ -80,18 +89,46 @@ func setupNetwork(t testing.TB, rnd *rand.Rand, cfg koordeConfig, N int) []*node
 
 }
 
-func setupTest(t testing.TB, cfg koordeConfig, N int, setSeed int64) (*assert.Assertions, *rand.Rand, []*node) {
+func setupTest(t testing.TB, cfg koordeConfig, N int, setSeed int64) (*assert.Assertions, *kRnd, []*node) {
 	assert := assert.New(t)
 	seed := setSeed
 	if seed < 0 {
 		seed = time.Now().Unix()
 		t.Logf("Seed: %d", seed)
 	}
-	rnd := rand.New(rand.NewSource(seed))
+	rnd := &kRnd{*rand.New(rand.NewSource(seed))}
 	nodes := setupNetwork(t, rnd, cfg, N)
 
 	return assert, rnd, nodes
 
+}
+
+func disableLog() func() {
+	oldLog := log
+	log = logger.New(ioutil.Discard, "", 0)
+	return func() {
+		log = oldLog
+	}
+}
+
+func TestResolveIsConsistent(t *testing.T) {
+	defer disableLog()()
+
+	cfg, err := Config(16, 16)
+	assert.NoError(t, err, "Config returned error")
+	assert, rnd, nodes := setupTest(t, cfg, 1000, -1)
+
+	k := uint256.NewInt()
+	rnd.Uint256(k)
+
+	nForK, err := nodes[0].Lookup(k)
+	assert.NoError(err, "lookup returned error")
+
+	for _, n := range nodes {
+		m, err := n.Lookup(k)
+		assert.NoError(err, "lookup returned error")
+		assert.Equal(nForK.id, m.id, "different node for key")
+	}
 }
 
 var long = flag.Bool("long", false, "run long tests")

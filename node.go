@@ -1,7 +1,8 @@
 package koorde
 
 import (
-	"log"
+	logger "log"
+	"os"
 
 	"github.com/holiman/uint256"
 )
@@ -10,6 +11,8 @@ var (
 	one = uint256.NewInt().SetOne()
 	neg = uint256.NewInt().Not()
 )
+
+var log = logger.New(os.Stdout, "koorde: ", 0)
 
 type node struct {
 	cfg  koordeConfig

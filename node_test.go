@@ -31,7 +31,7 @@ func TestBetweenEI(t *testing.T) {
 	assert.True(betweenEI(ten, big, ten), "a lot < 1 <= 10")
 }
 
-func setupNetwork(t testing.TB, rnd *rand.Rand, cfg kordeConfig, N int) []*node {
+func setupNetwork(t testing.TB, rnd *rand.Rand, cfg koordeConfig, N int) []*node {
 	assert := assert.New(t)
 
 	nodes := make([]*node, 0, N)
@@ -56,13 +56,16 @@ func setupNetwork(t testing.TB, rnd *rand.Rand, cfg kordeConfig, N int) []*node 
 	// create de Burjin paths
 	for i := 0; i < N; i++ {
 		did := nodes[i].id.Clone()
-		did.Lsh(did, 1) // 2m
+		did.Lsh(did, cfg.degreeShift) // 2m
 		prev := nodes[i]
 		curr := prev.succ[0]
 
 		for {
 			if betweenEI(did, curr.id, curr.succ[0].id) {
-				nodes[i].d = prev
+				nodes[i].d[0] = prev
+				for j := 1; j < int(cfg.degree); j++ {
+					nodes[i].d[j] = nodes[i].d[j-1].succ[0]
+				}
 				break
 			}
 			prev, curr = curr, curr.succ[0]
@@ -77,7 +80,7 @@ func setupNetwork(t testing.TB, rnd *rand.Rand, cfg kordeConfig, N int) []*node 
 
 }
 
-func setupTest(t testing.TB, cfg kordeConfig, N int, setSeed int64) (*assert.Assertions, *rand.Rand, []*node) {
+func setupTest(t testing.TB, cfg koordeConfig, N int, setSeed int64) (*assert.Assertions, *rand.Rand, []*node) {
 	assert := assert.New(t)
 	seed := setSeed
 	if seed < 0 {
@@ -99,7 +102,7 @@ func TestResolve(t *testing.T) {
 		Nmax = 1 << 15
 	}
 
-	for N := 1 << 7; N <= Nmax; N = N << 1 {
+	for N := 1 << 8; N <= Nmax; N = N << 1 {
 		t.Run(fmt.Sprintf("nodes-%d", N), func(t *testing.T) {
 			testResolveN(N, t)
 		})
@@ -107,13 +110,15 @@ func TestResolve(t *testing.T) {
 }
 
 func testResolveN(N int, t *testing.T) {
-	cfg := kordeConfig{backupSuccessors: 8}
-	assert, rnd, nodes := setupTest(t, cfg, N, -1)
+	cfg, err := Config(8, 16)
+	assert.NoError(t, err, "Config returned error")
+	//assert, rnd, nodes := setupTest(t, cfg, N, -1)
+	assert, rnd, nodes := setupTest(t, cfg, N, 1550215297)
 
 	tmp := uint256.NewInt()
 	tmpBuf := make([]byte, 256/8)
 
-	runs := 10000
+	runs := 100000
 	for i := 0; i < runs; i++ {
 		_, err := io.ReadFull(rnd, tmpBuf)
 		assert.NoError(err, "in random")
@@ -129,7 +134,8 @@ func testResolveN(N int, t *testing.T) {
 
 func BenchmarkLookup(b *testing.B) {
 	N := 60000
-	cfg := kordeConfig{backupSuccessors: 8}
+	cfg, err := Config(2, 8)
+	assert.NoError(b, err, "Config returned error")
 	assert, rnd, nodes := setupTest(b, cfg, N, -1)
 
 	tmp := uint256.NewInt()

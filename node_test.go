@@ -3,7 +3,6 @@ package koorde
 import (
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	logger "log"
 	"math/rand"
@@ -65,7 +64,7 @@ func setupNetwork(t testing.TB, rnd *kRnd, cfg koordeConfig, N int) []*node {
 	// create de Burjin paths
 	for i := 0; i < N; i++ {
 		did := nodes[i].id.Clone()
-		did.Lsh(did, cfg.degreeShift) // 2m
+		did.Lsh(did, cfg.degreeShift) // N * m
 		prev := nodes[i]
 		curr := prev.succ[0]
 
@@ -152,21 +151,18 @@ func testResolveN(N int, t *testing.T) {
 	assert, rnd, nodes := setupTest(t, cfg, N, -1)
 	//assert, rnd, nodes := setupTest(t, cfg, N, 1550215297)
 
-	tmp := uint256.NewInt()
-	tmpBuf := make([]byte, 256/8)
+	k := uint256.NewInt()
 
 	runs := 1000
+	if *long {
+		runs := 100000
+	}
 	for i := 0; i < runs; i++ {
-		_, err := io.ReadFull(rnd, tmpBuf)
-		assert.NoError(err, "in random")
-		tmp = tmp.SetBytes(tmpBuf)
-		//tmp.Or(tmp, neg).Rsh(tmp, 16)
-
-		_, err = nodes[rnd.Intn(N)].Lookup(tmp)
+		rnd.Uint256(k)
+		_, err = nodes[rnd.Intn(N)].Lookup(k)
 		assert.NoError(err, "lookup doesn't error")
 		//t.Logf("Key [%x] found at [%x]", tmp, n.id)
 	}
-
 }
 
 func BenchmarkLookup(b *testing.B) {
@@ -175,18 +171,13 @@ func BenchmarkLookup(b *testing.B) {
 	assert.NoError(b, err, "Config returned error")
 	assert, rnd, nodes := setupTest(b, cfg, N, -1)
 
-	tmp := uint256.NewInt()
-	tmpBuf := make([]byte, 256/8)
+	k := uint256.NewInt()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := io.ReadFull(rnd, tmpBuf)
-		assert.NoError(err, "in random")
-		tmp = tmp.SetBytes(tmpBuf)
-
+		rnd.Uint256(k)
 		_, err = nodes[rnd.Intn(N)].Lookup(tmp)
 		assert.NoError(err, "lookup doesn't error")
 		//b.Logf("Key [%x] found at [%x]", tmp, n.id)
-
 	}
 }
